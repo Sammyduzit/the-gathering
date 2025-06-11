@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -12,8 +13,11 @@ class Room(Base):
     name = Column(String(100), unique=True, nullable=False)
     description = Column(Text, nullable=True)
     max_users = Column(Integer, nullable=True)
+
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    users = relationship("User", back_populates="current_room")
 
     def __repr__(self):
         return f"<Room(id={self.id}, name='{self.name}')>"
