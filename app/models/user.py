@@ -4,6 +4,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Foreign
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
+from app.models.conversation_participant import ConversationParticipant
 
 
 class UserStatus(enum.Enum):
@@ -17,7 +18,7 @@ class User(Base):
     """User model"""
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     username = Column(String(100), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
@@ -29,6 +30,7 @@ class User(Base):
 
     current_room_id = Column(Integer, ForeignKey("rooms.id"), nullable=True)
     current_room = relationship("Room", back_populates="users")
+    conversation_participations = relationship("ConversationParticipant", back_populates="user")
 
     def __repr__(self):
         return f"<User (id={self.id}, username='{self.username}')>"

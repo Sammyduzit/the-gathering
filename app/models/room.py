@@ -6,10 +6,10 @@ from app.core.database import Base
 
 
 class Room(Base):
-    "Room model"
+    """Room model"""
     __tablename__ = "rooms"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String(100), unique=True, nullable=False)
     description = Column(Text, nullable=True)
     max_users = Column(Integer, nullable=True)
@@ -18,6 +18,7 @@ class Room(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     users = relationship("User", back_populates="current_room")
+    conversations = relationship("Conversation", back_populates="room")
 
     def __repr__(self):
         return f"<Room(id={self.id}, name='{self.name}')>"
