@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, ForeignKey
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -26,5 +26,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_active = Column(DateTime(timezone=True), server_default=func.now())
 
+    current_room_id = Column(Integer, ForeignKey("rooms.id"), nullable=True)
+
     def __repr__(self):
-        return f"User (id={self.id}, username='{self.username}')"
+        return f"<User (id={self.id}, username='{self.username}')>"
