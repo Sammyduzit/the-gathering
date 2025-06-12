@@ -19,6 +19,7 @@ class Room(Base):
 
     users = relationship("User", back_populates="current_room")
     conversations = relationship("Conversation", back_populates="room")
+    room_messages = relationship("Message", back_populates="room", lazy="dynamic")
 
     def __repr__(self):
         return f"<Room(id={self.id}, name='{self.name}')>"
