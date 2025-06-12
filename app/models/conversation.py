@@ -4,13 +4,11 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 
-from app.models.conversation_participant import ConversationParticipant
-
 
 class ConversationType(enum.Enum):
     """Conversation types"""
     PRIVATE = "private"
-    ROOM = "room"
+    GROUP = "group"
 
 
 class Conversation(Base):

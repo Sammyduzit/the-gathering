@@ -4,7 +4,6 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Foreign
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
-from app.models.conversation_participant import ConversationParticipant
 
 
 class UserStatus(enum.Enum):
