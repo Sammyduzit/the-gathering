@@ -4,6 +4,7 @@ import uvicorn
 
 from app.core.config import settings
 from app.core.database import create_tables
+from app.api.v1.endpoints.room_router import router as rooms_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,10 +27,25 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.include_router(rooms_router, prefix="/api/v1")
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to The Gathering!"}
+    return {
+        "message": "Welcome to The Gathering API",
+        "status": "running",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "endpoints": {
+            "rooms": "/api/v1/rooms",
+            "room_health": "/api/v1/rooms/health/check"
+        }
+    }
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 
 @app.get("/test")
@@ -39,6 +55,7 @@ def test_endpoint():
 
 if __name__ == "__main__":
     print("API Documentation: http://localhost:8000/docs")
+    print("Room Endpoint: http://localhost:8000/api/v1/rooms")
 
     uvicorn.run(
         "main:app",
