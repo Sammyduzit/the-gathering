@@ -32,13 +32,13 @@ class Message(Base):
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True)
-    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False)
     content = Column(Text, nullable=False)
     message_type = Column(Enum(MessageType), nullable=False, default=MessageType.TEXT)
     sent_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
-    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=True)
-    conversation_id = Column(Integer, ForeignKey("conversations.id"))
+    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"))
 
     sender = relationship("User", back_populates="sent_messages")
     room = relationship("Room", back_populates="room_messages")

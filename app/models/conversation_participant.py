@@ -18,8 +18,8 @@ class ConversationParticipant(Base):
     __tablename__ = "conversation_participants"
 
     id = Column(Integer, primary_key=True)
-    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False)
     joined_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     left_at = Column(DateTime(timezone=True), nullable=True)
 

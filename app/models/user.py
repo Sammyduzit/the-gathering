@@ -27,7 +27,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_active = Column(DateTime(timezone=True), server_default=func.now())
 
-    current_room_id = Column(Integer, ForeignKey("rooms.id"), nullable=True)
+    current_room_id = Column(Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
     current_room = relationship("Room", back_populates="users")
     conversation_participations = relationship("ConversationParticipant", back_populates="user")
     sent_messages= relationship("Message", back_populates="sender", lazy="dynamic")

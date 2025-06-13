@@ -16,7 +16,7 @@ class Conversation(Base):
     __tablename__ = "conversations"
 
     id = Column(Integer, primary_key=True)
-    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
+    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=False)
     conversation_type = Column(Enum(ConversationType), nullable=False, default=ConversationType.PRIVATE)
     max_participants = Column(Integer, nullable=True)           # 2 for private, NULL for group chat
 
