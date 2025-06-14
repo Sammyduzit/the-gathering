@@ -1,16 +1,27 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 
+
 class RoomResponse(BaseModel):
-    "room API Response"
+    """
+    Schema for room responses.
+    """
     id: int
     name: str
-    description: Optional[str] = None
-    max_users: Optional[int] = None
+    description: str | None = None
+    max_users: int | None = None
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RoomCreate(BaseModel):
+    """
+    Schema for creating a new room.
+    Input validation for POST requests.
+    """
+    name: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+    max_users: int | None = Field(None, ge=1, le=1000)
 
