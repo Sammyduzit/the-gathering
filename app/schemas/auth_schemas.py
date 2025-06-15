@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field, EmailStr
+from datetime import datetime
 
 class UserRegister(BaseModel):
     """
