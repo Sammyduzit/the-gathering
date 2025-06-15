@@ -35,6 +35,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     username: str
     is_active: bool
+    is_admin: bool
     created_at: datetime
     current_room_id: int | None = None
 
