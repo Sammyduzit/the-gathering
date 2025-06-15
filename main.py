@@ -5,6 +5,7 @@ import uvicorn
 from app.core.config import settings
 from app.core.database import create_tables
 from app.api.v1.endpoints.room_router import router as rooms_router
+from app.api.v1.endpoints.auth_router import router as auth_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,6 +29,8 @@ app = FastAPI(
 )
 
 app.include_router(rooms_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")
+
 
 @app.get("/")
 def root():
