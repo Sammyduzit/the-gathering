@@ -50,5 +50,17 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     return current_user
 
 
-async def get_current_admin_user():
-    pass
+async def get_current_admin_user(current_user: User = Depends(get_current_active_user)) -> User:
+    """
+    Get current user and verify admin status.
+    :param current_user: Current authenticated user
+    :return: Admin user object
+    """
+
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+    return current_user
+
