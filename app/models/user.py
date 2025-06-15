@@ -26,6 +26,7 @@ class User(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_active = Column(DateTime(timezone=True), server_default=func.now())
+    is_admin = Column(Boolean, nullable=False, default=False)
 
     current_room_id = Column(Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
     current_room = relationship("Room", back_populates="users")
