@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 pwd_context = CryptContext(schemes=["bcrypt"])
 
 
-def has_password(password: str) -> str:
+def hash_password(password: str) -> str:
     """
     Hash a password using bcrypt.
     :param password: Plain text password
