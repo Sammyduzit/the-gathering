@@ -81,7 +81,7 @@ async def login_user(user_credentials: UserLogin, db: Session = Depends(get_db))
     if not verify_password(user_credentials.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incalid email or password"
+            detail="Invalid email or password"
         )
 
     if not user.is_active:
