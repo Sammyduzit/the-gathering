@@ -1,14 +1,21 @@
-import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-class Settings:
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://dev:password@localhost:5432/thegathering")
 
-    SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
-    ALGORITHM = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES = 30
+class Settings(BaseSettings):
+    """Application settings"""
+    database_url: str = "postgresql+psycopg2://dev:password@localhost:5432/thegathering"
 
-    APP_NAME = "The Gathering API"
-    DEBUG = True
+    secret_key: str = "super-secret-key"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
 
+    app_name: str = "The Gathering API"
+    debug: bool = True
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False
+    )
 
 settings = Settings()
