@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.APP_NAME,
+    title=settings.app_name,
     description="Virtual meeting space with 3 type chat system",
     docs_url="/docs",
     lifespan=lifespan

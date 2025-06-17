@@ -90,7 +90,7 @@ async def login_user(user_credentials: UserLogin, db: Session = Depends(get_db))
             detail="User account is inactive"
         )
 
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(
         data = {"sub": user.username},
         expires_delta=access_token_expires
@@ -99,7 +99,7 @@ async def login_user(user_credentials: UserLogin, db: Session = Depends(get_db))
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        "expires_in": settings.access_token_expire_minutes * 60
     }
 
 
