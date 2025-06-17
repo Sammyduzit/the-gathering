@@ -1,17 +1,30 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 
 from app.core.database import get_db
 from app.core.auth_dependencies import get_current_active_user, get_current_admin_user
 from app.models.room import Room
-from app.models.user import User
+from app.models.user import User, UserStatus
 from app.schemas.room_schemas import RoomResponse, RoomCreate
+from app.schemas.room_user_schemas import (
+    RoomJoinResponse,
+    RoomLeaveResponse,
+    RoomUsersListResponse,
+    RoomUserResponse,
+    UserStatusUpdate)
+from app.services.room_service import (
+    get_room_or_404,
+    get_room_user_count,
+    validate_room_capacity,
+    validate_room_name_unique)
+
 
 router = APIRouter(
     prefix="/rooms",
     tags=["rooms"]
 )
+
 
 @router.get("/", response_model=list[RoomResponse])
 async def get_all_rooms(db: Session = Depends(get_db),
@@ -24,12 +37,10 @@ async def get_all_rooms(db: Session = Depends(get_db),
     :return: List of active rooms
     """
     select_active_rooms = select(Room).where(Room.is_active.is_(True))
-
     result = db.execute(select_active_rooms)
     rooms = result.scalars().all()
+
     return rooms
-
-
 
 
 @router.post("/", response_model=RoomResponse, status_code=status.HTTP_201_CREATED)
@@ -44,15 +55,7 @@ async def create_room(room_data: RoomCreate,
     :param current_admin: Current authenticated admin
     :return: Created room object
     """
-    existing_room_query = select(Room).where(Room.name == room_data.name)
-    result = db.execute(existing_room_query)
-    existing_room = result.scalar_one_or_none()
-
-    if existing_room:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Room with name '{room_data.name}' already exists"
-        )
+    validate_room_name_unique(db, room_data.name)
 
     new_room = Room(
         name=room_data.name,
@@ -81,27 +84,10 @@ async def update_room(room_id: int,
     :param current_admin: Current authenticated admin
     :return: Updated room object
     """
-    select_room = select(Room).where(and_(Room.id == room_id, Room.is_active.is_(True)))
-    result = db.execute(select_room)
-
-    room = result.scalar_one_or_none()
-
-    if not room:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Room with id {room_id} not found"
-        )
+    room = get_room_or_404(db, room_id)
 
     if room_data.name != room.name:
-        existing_name_query = select(Room).where(Room.name == room_data.name)
-        result = db.execute(existing_name_query)
-        existing_room = result.scalar_one_or_none()
-
-        if existing_room:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Room with name '{room_data.name}' already exists"
-            )
+        validate_room_name_unique(db, room_data.name, room_id)
 
     room.name = room_data.name
     room.description = room_data.description
@@ -119,21 +105,13 @@ async def delete_room(room_id: int,
                       current_admin: User = Depends(get_current_admin_user)
                       ):
     """
-    Delete room by ID.
+    Soft delete room by ID.
     :param room_id: ID of room to delete
     :param db: Database session
     :param current_admin: Current authenticated admin
     :return: Deleted room object
     """
-    select_room = select(Room).where(and_(Room.id == room_id, Room.is_active.is_(True)))
-    result = db.execute(select_room)
-    room = result.scalar_one_or_none()
-
-    if not room:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Room with id {room_id} not found"
-        )
+    room = get_room_or_404(db, room_id)
 
     room.is_active = False
     db.commit()
@@ -150,13 +128,13 @@ async def get_room_count(db: Session = Depends(get_db),
     :param current_user: Current authenticated user
     :return: Dictionary with room count
     """
-    select_count = select(Room).where(Room.is_active.is_(True))
-    result = db.execute(select_count)
-    rooms = result.scalars().all()
+    room_count_query = select(func.count(Room.id)).where(Room.is_active.is_(True))
+    result = db.execute(room_count_query)
+    room_count = result.scalar()
 
     return {
-        "active rooms" : len(rooms),
-        "message": f"Found {len(rooms)} active rooms"
+        "active rooms" : room_count,
+        "message": f"Found {room_count} active rooms"
     }
 
 
@@ -178,29 +156,138 @@ async def get_room_by_id(room_id: int,
     :param current_user: Current authenticated user
     :return: Room object
     """
-    select_room = select(Room).where(and_(Room.id == room_id, Room.is_active.is_(True)))
-    result = db.execute(select_room)
-    room = result.scalar_one_or_none()
-
-    if not room:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Room with id {room_id} not found"
-        )
-
+    room = get_room_or_404(db, room_id)
     return room
 
 
 
+@router.post("/{room_id}/join", response_model=RoomJoinResponse)
+async def join_room(room_id: int,
+                    db: Session = Depends(get_db),
+                    current_user: User = Depends(get_current_active_user)
+                    ):
+    """
+    User joins room.
+    :param room_id: ID of room to join
+    :param db: Database session
+    :param current_user: Current authenticated user
+    :return: Join confirmation with room info
+    """
+    room = get_room_or_404(db, room_id)
+
+    current_user_count = get_room_user_count(db, room_id)
+
+    validate_room_capacity(room, current_user_count)
+
+    current_user.current_room_id = room_id
+    current_user.status = UserStatus.AVAILABLE
+
+    db.commit()
+    db.refresh(current_user)
+
+    final_user_count = get_room_user_count(db, room_id)
+
+    return RoomJoinResponse(
+        message=f"Successfully joined room '{room.name}'",
+        room_id=room_id,
+        room_name=room.name,
+        user_count=final_user_count
+    )
 
 
+@router.post("/{room_id}/leave", response_model=RoomLeaveResponse)
+async def leave_room(room_id: int,
+                     db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_active_user)
+                     ):
+    """
+    User leaves room.
+    :param room_id: ID of room to leave
+    :param db: Database session
+    :param current_user: Current authenticated user
+    :return: Leave confirmation
+    """
+    room = get_room_or_404(db, room_id)
+
+    if current_user.current_room_id != room_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User is not in room '{room.name}'"
+        )
+
+    current_user.current_room_id = None
+    current_user.status = UserStatus.AWAY
+
+    db.commit()
+
+    return RoomLeaveResponse(
+        message=f"Left room '{room.name}'",
+        room_id=room_id,
+        room_name=room.name
+    )
 
 
+@router.get("/{room_id}/users", response_model=RoomUsersListResponse)
+async def get_room_users(room_id: int,
+                         db:Session = Depends(get_db),
+                         current_user: User = Depends(get_current_active_user)
+                         ):
+    """
+    Get list of users currently in a room.
+    :param room_id: Room ID
+    :param db: Database session
+    :param current_user: Current authenticated user
+    :return: List of users in room
+    """
+
+    room = get_room_or_404(db, room_id)
+
+    users_query = select(User).where(and_(User.current_room_id == room.id,
+                                          User.is_active.is_(True))
+                                     ).order_by(User.username)
+
+    result = db.execute(users_query)
+    users = result.scalars().all()
+
+    room_users = [
+        RoomUserResponse(
+            id=user.id,
+            username= user.username,
+            status=user.status.value,
+            last_active=user.last_active
+        )
+        for user in users
+    ]
+
+    return RoomUsersListResponse(
+        room_id=room_id,
+        room_name=room.name,
+        total_users=len(room_users),
+        users=room_users
+    )
 
 
+@router.patch("/users/status", response_model=dict)
+async  def update_user_status(status_update: UserStatusUpdate,
+                              db: Session = Depends(get_db),
+                              current_user: User = Depends(get_current_active_user)
+                              ):
+    """
+    Update current user status.
+    :param status_update: New status data
+    :param db: Database session
+    :param current_user: Current authenticated user
+    :return: Status update confirmation
+    """
+    current_user.status = status_update.status
 
+    db.commit()
 
-
+    return {
+        "message": f"Status updated to '{status_update.status.value}'",
+        "new_status": status_update.status.value,
+        "user": current_user.username
+    }
 
 
 
