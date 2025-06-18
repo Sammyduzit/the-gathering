@@ -2,10 +2,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import uvicorn
 
-from core.config import settings
-from core.database import create_tables
-from api.v1.endpoints.room_router import router as rooms_router
-from api.v1.endpoints.auth_router import router as auth_router
+from app.core.config import settings
+from app.core.database import create_tables
+from app.api.v1.endpoints.room_router import router as rooms_router
+from app.api.v1.endpoints.auth_router import router as auth_router
+from testing_setup import setup_complete_test_environment
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -14,10 +15,9 @@ async def lifespan(app: FastAPI):
     """
     print("Starting...")
     create_tables()
+    setup_complete_test_environment()
     print("Database tables created")
-
     yield
-
     print("Shutting down...")
 
 
