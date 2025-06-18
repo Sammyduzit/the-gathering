@@ -6,7 +6,7 @@ from app.models.room import Room
 from app.models.user import User
 
 
-def get_room_or_404(db:Session, room_id: int, ) -> Room:
+def get_room_or_404(db: Session, room_id: int) -> Room:
     """
     Get active room by ID or raise 404.
     :param db: Database session
@@ -26,7 +26,7 @@ def get_room_or_404(db:Session, room_id: int, ) -> Room:
 
 
 
-def get_room_user_count(db:Session, room_id:int) -> int:
+def get_room_user_count(db: Session, room_id: int) -> int:
     """
     Get count of users currently in room.
     :param db: Database session
@@ -60,5 +60,23 @@ def validate_room_name_unique(db: Session, name: str, exclude_room_id: int | Non
     :param db: Database session
     :param name: Room name to check
     :param exclude_room_id: Room ID to exclude from check
-    :return:
+    :return: None
     """
+    room_query = select(Room).where(
+        and_(
+        Room.name == name,
+        Room.is_active.is_(True)
+        )
+    )
+
+    if exclude_room_id:
+        room_query = room_query.where(Room.id != exclude_room_id)
+
+    result = db.execute(room_query)
+    existing_room = result.scalar_one_or_none()
+
+    if existing_room:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Room name '{name}' already exists"
+        )
