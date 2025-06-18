@@ -34,6 +34,7 @@ class UserResponse(BaseModel):
     id: int
     email: EmailStr
     username: str
+    avatar_url: str | None = None
     is_active: bool
     is_admin: bool
     created_at: datetime

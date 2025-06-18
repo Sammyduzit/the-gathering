@@ -11,6 +11,7 @@ from app.core.jwt_utils import create_access_token
 from app.core.auth_dependencies import get_current_active_user
 from app.core.config import settings
 from app.schemas.auth_schemas import Token
+from app.services.avatar_service import generate_avatar_url
 
 router = APIRouter(
     prefix="/auth",
@@ -46,11 +47,13 @@ async def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
         )
 
     hashed_password = hash_password(user_data.password)
+    avatar_url = generate_avatar_url(user_data.username)
 
     new_user = User(
-        email= user_data.email,
-        username= user_data.username,
-        password_hash= hashed_password
+        email=user_data.email,
+        username=user_data.username,
+        password_hash=hashed_password,
+        avatar_url=avatar_url
     )
 
     db.add(new_user)

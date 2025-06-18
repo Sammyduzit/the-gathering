@@ -10,6 +10,7 @@ class RoomUserResponse(BaseModel):
     """
     id: int
     username: str
+    avatar_url: str | None = None
     status: str = Field(description="User status: available, busy, away")
     last_active: datetime
 

@@ -1,6 +1,8 @@
 import pytest
 from fastapi import status
 
+from tests.conftest import client
+
 
 class TestAuthentication:
     """Core authentication."""
@@ -9,6 +11,12 @@ class TestAuthentication:
         """Test complete registration → login flow."""
         register_response = client.post("/api/v1/auth/register", json=test_user_data)
         assert register_response.status_code == status.HTTP_201_CREATED
+
+        print("Response JSON:", register_response.json())
+
+        user_data = register_response.json()
+        assert user_data["avatar_url"] is not None
+        assert test_user_data["username"].lower() in user_data["avatar_url"]
 
         login_response = client.post("/api/v1/auth/login", json={
             "email": test_user_data["email"],
