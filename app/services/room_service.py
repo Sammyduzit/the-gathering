@@ -2,8 +2,10 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_, func
 
+from app.models.message import Message, MessageType
 from app.models.room import Room
 from app.models.user import User
+
 
 
 def get_room_or_404(db: Session, room_id: int) -> Room:
@@ -54,7 +56,7 @@ def validate_room_capacity(room: Room, current_count: int) -> None:
         )
 
 
-def validate_room_name_unique(db: Session, name: str, exclude_room_id: int | None = None):
+def validate_room_name_unique(db: Session, name: str, exclude_room_id: int | None = None) -> None:
     """
     Check if room name is unique.
     :param db: Database session
@@ -80,3 +82,46 @@ def validate_room_name_unique(db: Session, name: str, exclude_room_id: int | Non
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Room name '{name}' already exists"
         )
+
+
+def create_room_message(db: Session, user_id: int, room_id: int, content: str) -> Message:
+    """
+    Create room message.
+    :param db: Database session
+    :param user_id: Message sender ID
+    :param room_id: Target room
+    :param content: Message content
+    :return: Created message object
+    """
+
+    room = get_room_or_404(db, room_id)
+
+    user_query = select(User).where(
+        and_(
+            User.id == user_id,
+            User.current_room_id == room_id,
+            User.is_active.is_(True)
+            )
+    )
+    result = db.execute(user_query)
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"User must be in room '{room.name}' to send messages"
+        )
+
+    new_message = Message(
+        sender_id=user_id,
+        content=content,
+        message_type=MessageType.TEXT,
+        room_id=room_id,
+        conversation_id=None
+    )
+
+    db.add(new_message)
+    db.commit()
+    db.refresh(new_message)
+
+    return new_message
