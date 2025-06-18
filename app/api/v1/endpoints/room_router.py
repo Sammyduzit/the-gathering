@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_, func
 
@@ -6,18 +6,22 @@ from app.core.database import get_db
 from app.core.auth_dependencies import get_current_active_user, get_current_admin_user
 from app.models.room import Room
 from app.models.user import User, UserStatus
+from app.schemas.chat_schemas import MessageResponse, MessageCreate
 from app.schemas.room_schemas import RoomResponse, RoomCreate
 from app.schemas.room_user_schemas import (
     RoomJoinResponse,
     RoomLeaveResponse,
     RoomUsersListResponse,
     RoomUserResponse,
-    UserStatusUpdate)
+    UserStatusUpdate
+)
 from app.services.room_service import (
     get_room_or_404,
     get_room_user_count,
     validate_room_capacity,
-    validate_room_name_unique)
+    validate_room_name_unique,
+    create_room_message
+)
 
 
 router = APIRouter(
@@ -290,6 +294,26 @@ async  def update_user_status(status_update: UserStatusUpdate,
     }
 
 
+@router.post("/{room_id}/message", response_model=MessageResponse)
+async def send_room_message(room_id: int,
+                            message_data: MessageCreate = Body(...),
+                            db: Session = Depends(get_db),
+                            current_user: User = Depends(get_current_active_user),
+                            ):
+    """
+    Send message to room, visible for every member.
+    :param room_id: Target room ID
+    :param message_data: Message content
+    :param db: Database session
+    :param current_user: Current authenticated user
+    :return: Created message object
+    """
+
+    new_message = create_room_message(db, current_user.id, room_id, message_data.content)
+
+    new_message.sender_username = current_user.username
+
+    return new_message
 
 
 
