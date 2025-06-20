@@ -1,9 +1,6 @@
-from fastapi import  APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import timedelta
 
-from app.core.database import get_db
 from app.models import User
 from app.schemas.auth_schemas import UserResponse, UserRegister, UserLogin
 from app.core.auth_utils import hash_password, verify_password
@@ -13,34 +10,31 @@ from app.core.config import settings
 from app.schemas.auth_schemas import Token
 from app.services.avatar_service import generate_avatar_url
 
+from app.repositories.user_repository import IUserRepository
+from app.repositories.repository_dependencies import get_user_repository
+
 router = APIRouter(
     prefix="/auth",
     tags=["authentication"]
 )
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
+async def register_user(user_data: UserRegister,
+                        user_repo: IUserRepository = Depends(get_user_repository)):
     """
     Register a new user.
     :param user_data: New user data
-    :param db: Database session
+    :param user_repo: User Repository instance
     :return: Created user object
     """
-    existing_email_query = select(User).where(User.email == user_data.email)
-    result = db.execute(existing_email_query)
-    existing_email = result.scalar_one_or_none()
 
-    if existing_email:
+    if user_repo.email_exists(user_data.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
 
-    existing_username_query = select(User).where(User.username == user_data.username)
-    result = db.execute(existing_username_query)
-    existing_username = result.scalar_one_or_none()
-
-    if existing_username:
+    if user_repo.username_exists(user_data.username):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already taken"
@@ -56,24 +50,21 @@ async def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
         avatar_url=avatar_url
     )
 
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    created_user = user_repo.create(new_user)
 
-    return new_user
+    return created_user
 
 
 @router.post("/login", response_model=Token)
-async def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
+async def login_user(user_credentials: UserLogin,
+                     user_repo: IUserRepository = Depends(get_user_repository)):
     """
     Login user and return JWT token.
     :param user_credentials: User login credentials
-    :param db: Database session
+    :param user_repo: User Repository instance
     :return: JWT token object
     """
-    select_user = select(User).where(User.email == user_credentials.email)
-    result = db.execute(select_user)
-    user = result.scalar_one_or_none()
+    user = user_repo.get_by_email(user_credentials.email)
 
     if not user:
         raise HTTPException(

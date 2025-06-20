@@ -1,11 +1,10 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
-from sqlalchemy import select
 
-from app.core.database import get_db
 from app.core.jwt_utils import get_user_from_token
 from app.models.user import User
+from app.repositories.user_repository import IUserRepository
+from app.repositories.repository_dependencies import get_user_repository
 
 
 security = HTTPBearer(auto_error=False)
@@ -24,18 +23,18 @@ async def get_token(credentials: HTTPAuthorizationCredentials = Depends(security
         )
     return credentials.credentials
 
-async def get_current_user(token: str = Depends(get_token), db: Session = Depends(get_db)) -> User:
+
+async def get_current_user(token: str = Depends(get_token),
+                           user_repo: IUserRepository = Depends(get_user_repository)) -> User:
     """
     Get current authenticated user from JWT token.
     :param token: JWT token string
-    :param db: Database session
+    :param user_repo: User repository instance
     :return: Current user object
     """
     username = get_user_from_token(token)
 
-    select_user = select(User).where(User.username == username)
-    result = db.execute(select_user)
-    user = result.scalar_one_or_none()
+    user = user_repo.get_by_username(username)
 
     if not user:
         raise HTTPException(
