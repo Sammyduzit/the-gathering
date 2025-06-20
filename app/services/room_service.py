@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from app.models.message import Message
 from app.models.room import Room
 from app.models.user import User, UserStatus
+from app.repositories.conversation_repository import IConversationRepository
 from app.repositories.room_repository import IRoomRepository
 from app.repositories.user_repository import IUserRepository
 from app.repositories.message_repository import IMessageRepository
@@ -13,15 +14,16 @@ from app.schemas.room_user_schemas import RoomUserResponse
 class RoomService:
     """Service for room business logic using Repository Pattern."""
 
-    def __init__(
-        self,
-        room_repo: IRoomRepository,
-        user_repo: IUserRepository,
-        message_repo: IMessageRepository
-    ):
+    def __init__(self,
+                 room_repo: IRoomRepository,
+                 user_repo: IUserRepository,
+                 message_repo: IMessageRepository,
+                 conversation_repo: IConversationRepository
+                 ):
         self.room_repo = room_repo
         self.user_repo = user_repo
         self.message_repo = message_repo
+        self.conversation_repo= conversation_repo
 
     def get_all_rooms(self) -> list[Room]:
         """Get all active rooms."""
@@ -72,16 +74,38 @@ class RoomService:
 
         return self.room_repo.update(room)
 
-    def delete_room(self, room_id: int) -> Room:
+    def delete_room(self, room_id: int) -> dict:
         """
-        Soft delete room.
+        Soft delete room, kick out all users and deactivate conversations.
         :param room_id: Room ID to delete
         :return: Deleted room
         """
         room = self._get_room_or_404(room_id)
+
+        users_in_room = self.room_repo.get_users_in_room(room_id)
+        kicked_users = []
+        for user in users_in_room:
+            user.current_room_id = None
+            user.status = UserStatus.AWAY
+            self.user_repo.update(user)
+            kicked_users.append(user.username)
+
+        conversations = self.conversation_repo.get_room_conversations(room_id)
+        deactivated_conversations = len(conversations)
+        for conversation in conversations:
+            conversation.is_active = False
+            self.conversation_repo.update(conversation)
+
         self.room_repo.soft_delete(room_id)
         room.is_active = False
-        return room
+        
+        return {
+            "message": f"Room '{room.name}' has been closed",
+            "room_id": room_id,
+            "users_kicked": len(kicked_users),
+            "conversations_archived": deactivated_conversations,
+            "note": "Chat history remains accessible"
+        }
 
     def get_room_by_id(self, room_id: int) -> Room:
         """Get room by ID with validation."""
