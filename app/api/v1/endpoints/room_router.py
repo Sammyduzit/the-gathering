@@ -22,7 +22,7 @@ router = APIRouter(
 @router.get("/", response_model=list[RoomResponse])
 async def get_all_rooms(current_user: User = Depends(get_current_active_user),
                         room_service: RoomService = Depends(get_room_service)
-                        ):
+                        ) -> list[RoomResponse]:
     """
     Get all active rooms.
     :param current_user: Current authenticated user
@@ -36,7 +36,7 @@ async def get_all_rooms(current_user: User = Depends(get_current_active_user),
 async def create_room(room_data: RoomCreate,
                       current_admin: User = Depends(get_current_admin_user),
                       room_service: RoomService = Depends(get_room_service),
-                      ):
+                      ) -> RoomResponse:
     """
     Create a new room.
     :param room_data: Room creation data
@@ -56,7 +56,7 @@ async def update_room(room_id: int,
                       room_data: RoomCreate,
                       current_admin: User = Depends(get_current_admin_user),
                       room_service: RoomService = Depends(get_room_service)
-                      ):
+                      ) -> RoomResponse:
     """
     Update existing room data.
     :param room_id: ID of the room to update
@@ -73,17 +73,17 @@ async def update_room(room_id: int,
     )
 
 
-@router.delete("/{room_id}", response_model=RoomResponse)
+@router.delete("/{room_id}")
 async def delete_room(room_id: int,
                       current_admin: User = Depends(get_current_admin_user),
                       room_service: RoomService = Depends(get_room_service)
-                      ):
+                      ) -> dict:
     """
-    Soft delete room by ID.
+    Close room with cleanup, kick users and archive conversations.
     :param room_id: ID of room to delete
     :param current_admin: Current authenticated admin
     :param room_service: Service instance handling room logic
-    :return: Deleted room object
+    :return: Cleanup summary with statistics
     """
     return room_service.delete_room(room_id)
 
@@ -91,7 +91,7 @@ async def delete_room(room_id: int,
 @router.get("/count")
 async def get_room_count(current_user: User = Depends(get_current_active_user),
                          room_service: RoomService = Depends(get_room_service)
-                         ):
+                         ) -> dict:
     """
     Get count of active rooms.
     :param current_user: Current authenticated user
@@ -111,7 +111,7 @@ async def rooms_health():
 async def get_room_by_id(room_id: int,
                          current_user: User = Depends(get_current_active_user),
                          room_service: RoomService = Depends(get_room_service)
-                         ):
+                         ) -> RoomResponse:
     """
     Get single room by ID.
     :param room_id: ID of room
@@ -127,7 +127,7 @@ async def get_room_by_id(room_id: int,
 async def join_room(room_id: int,
                     current_user: User = Depends(get_current_active_user),
                     room_service: RoomService = Depends(get_room_service)
-                    ):
+                    ) -> RoomJoinResponse:
     """
     User joins room.
     :param room_id: ID of room to join
@@ -142,7 +142,7 @@ async def join_room(room_id: int,
 async def leave_room(room_id: int,
                      current_user: User = Depends(get_current_active_user),
                      room_service: RoomService = Depends(get_room_service)
-                     ):
+                     ) -> RoomLeaveResponse:
     """
     User leaves room.
     :param room_id: ID of room to leave
@@ -157,7 +157,7 @@ async def leave_room(room_id: int,
 async def get_room_users(room_id: int,
                          current_user: User = Depends(get_current_active_user),
                          room_service: RoomService = Depends(get_room_service)
-                         ):
+                         ) -> RoomUsersListResponse:
     """
     Get list of users currently in a room.
     :param room_id: Room ID
@@ -168,11 +168,11 @@ async def get_room_users(room_id: int,
     return room_service.get_room_users(room_id)
 
 
-@router.patch("/users/status", response_model=dict)
+@router.patch("/users/status")
 async  def update_user_status(status_update: UserStatusUpdate,
                               current_user: User = Depends(get_current_active_user),
                               room_service: RoomService = Depends(get_room_service)
-                              ):
+                              ) -> dict:
     """
     Update current user status.
     :param status_update: New status data
